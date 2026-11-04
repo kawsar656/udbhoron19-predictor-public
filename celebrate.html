@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Udbhoron '19 Predictor FWC-26 — Champions!</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold:   #FFD700;
+      --gold2:  #FFA500;
+      --silver: #C0C0C0;
+      --bronze: #CD7F32;
+      --green:  #0a4d2e;
+      --green2: #1a7a4c;
+      --bg:     #030e06;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      height: 100dvh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Canvas layers ── */
+    #fireworks-canvas, #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    #confetti-canvas { z-index: 1; }
+
+    /* ── Main UI ── */
+    .stage {
+      position: relative;
+      z-index: 10;
+      width: min(480px, 94vw);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* Trophy + title */
+    .title-block {
+      text-align: center;
+      margin-bottom: 28px;
+      animation: fadeDown .9s ease both;
+    }
+    .trophy-emoji {
+      font-size: clamp(3rem, 10vw, 5rem);
+      display: block;
+      filter: drop-shadow(0 0 24px var(--gold));
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .main-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 8vw, 3.8rem);
+      letter-spacing: .06em;
+      background: linear-gradient(135deg, var(--gold) 0%, #fff 50%, var(--gold2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      text-shadow: none;
+    }
+    .sub-title {
+      font-size: clamp(.75rem, 2.5vw, .95rem);
+      color: rgba(255,255,255,.55);
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* ── Scroll container ── */
+    .scroll-window {
+      width: 100%;
+      height: clamp(320px, 55vh, 440px);
+      overflow: hidden;
+      position: relative;
+      mask-image: linear-gradient(to bottom,
+        transparent 0%, black 12%,
+        black 88%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom,
+        transparent 0%, black 12%,
+        black 88%, transparent 100%);
+    }
+
+    .scroll-track {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 40px 0;
+      /* JS sets transform */
+    }
+
+    /* ── Individual winner card ── */
+    .winner-card {
+      width: 100%;
+      border-radius: 16px;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s;
+      backdrop-filter: blur(8px);
+    }
+
+    /* rank-specific themes */
+    .rank-1 {
+      background: linear-gradient(120deg,
+        rgba(255,215,0,.18) 0%, rgba(255,165,0,.10) 100%);
+      border: 1.5px solid rgba(255,215,0,.55);
+      box-shadow: 0 0 32px rgba(255,215,0,.20),
+                  inset 0 1px 0 rgba(255,215,0,.3);
+    }
+    .rank-2 {
+      background: linear-gradient(120deg,
+        rgba(192,192,192,.15) 0%, rgba(160,160,180,.08) 100%);
+      border: 1.5px solid rgba(192,192,192,.45);
+      box-shadow: 0 0 24px rgba(192,192,192,.12);
+    }
+    .rank-3 {
+      background: linear-gradient(120deg,
+        rgba(205,127,50,.15) 0%, rgba(180,100,30,.08) 100%);
+      border: 1.5px solid rgba(205,127,50,.45);
+      box-shadow: 0 0 24px rgba(205,127,50,.12);
+    }
+    .rank-4, .rank-5 {
+      background: linear-gradient(120deg,
+        rgba(26,122,76,.18) 0%, rgba(10,77,46,.10) 100%);
+      border: 1.5px solid rgba(26,122,76,.4);
+    }
+
+    /* shimmer stripe on rank-1 */
+    .rank-1::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg,
+        transparent 40%, rgba(255,215,0,.08) 50%, transparent 60%);
+      animation: shimmer 3s linear infinite;
+    }
+
+    /* rank badge */
+    .rank-badge {
+      flex-shrink: 0;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      line-height: 1;
+      position: relative;
+    }
+    .rank-1 .rank-badge {
+      background: radial-gradient(circle, #FFD700, #B8860B);
+      color: #1a0a00;
+      box-shadow: 0 0 16px rgba(255,215,0,.6);
+    }
+    .rank-2 .rank-badge {
+      background: radial-gradient(circle, #E8E8E8, #888);
+      color: #111;
+    }
+    .rank-3 .rank-badge {
+      background: radial-gradient(circle, #E8A050, #8B4513);
+      color: #1a0a00;
+    }
+    .rank-4 .rank-badge, .rank-5 .rank-badge {
+      background: rgba(26,122,76,.4);
+      border: 1px solid rgba(26,122,76,.7);
+      color: #fff;
+    }
+    .badge-medal { font-size: 1.6rem; line-height: 1; }
+
+    /* info */
+    .winner-info { flex: 1; min-width: 0; }
+    .winner-name {
+      font-size: clamp(1rem, 3.5vw, 1.2rem);
+      font-weight: 700;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .rank-1 .winner-name {
+      background: linear-gradient(90deg, var(--gold), #fff, var(--gold2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .winner-label {
+      font-size: .72rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.4);
+      margin-top: 2px;
+    }
+    .rank-1 .winner-label { color: rgba(255,215,0,.6); }
+
+    /* points pill */
+    .points-pill {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 999px;
+      text-align: center;
+    }
+    .rank-1 .points-pill {
+      background: linear-gradient(135deg, #FFD700, #FF8C00);
+      box-shadow: 0 0 12px rgba(255,215,0,.4);
+    }
+    .rank-2 .points-pill { background: rgba(192,192,192,.25); border: 1px solid rgba(192,192,192,.4); }
+    .rank-3 .points-pill { background: rgba(205,127,50,.25); border: 1px solid rgba(205,127,50,.4); }
+    .rank-4 .points-pill, .rank-5 .points-pill {
+      background: rgba(26,122,76,.3);
+      border: 1px solid rgba(26,122,76,.5);
+    }
+    .points-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.6rem;
+      line-height: 1;
+      color: #fff;
+    }
+    .rank-1 .points-num { color: #1a0a00; }
+    .points-label {
+      font-size: .6rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.6);
+    }
+    .rank-1 .points-label { color: rgba(0,0,0,.6); }
+
+    /* footer */
+    .footer-line {
+      margin-top: 22px;
+      font-size: .72rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.25);
+      text-align: center;
+      animation: fadeDown 1.2s .6s ease both;
+    }
+    .footer-line span { color: rgba(255,215,0,.5); }
+
+    /* ── Animations ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1);   filter: drop-shadow(0 0 18px var(--gold)); }
+      50%       { transform: scale(1.08); filter: drop-shadow(0 0 36px var(--gold2)); }
+    }
+    @keyframes shimmer {
+      from { transform: translateX(-100%); }
+      to   { transform: translateX(200%); }
+    }
+
+    /* ── Reduced motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="fireworks-canvas"></canvas>
+<canvas id="confetti-canvas"></canvas>
+
+<div class="stage">
+  <div class="title-block">
+    <span class="trophy-emoji">🏆</span>
+    <div class="main-title">Tournament Champions</div>
+    <div class="sub-title">Udbhoron '19 Predictor · FWC-26</div>
+  </div>
+
+  <div class="scroll-window">
+    <div class="scroll-track" id="scrollTrack">
+      <!-- cards injected by JS -->
+    </div>
+  </div>
+
+  <div class="footer-line">
+    Predict · Compete · <span>Celebrate</span>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   ① WINNER DATA — শুধু এখানে নাম ও পয়েন্ট বদলাও
+   ══════════════════════════════════════════ */
+const WINNERS = [
+  { rank: 1, name: 'Shahidul Islam Munna', points: 225, medal: '🥇' },
+  { rank: 2, name: 'MD. Jubaer Hosen',     points: 215, medal: '🥈' },
+  { rank: 3, name: 'Riham Rahman',         points: 212, medal: '🥉' },
+  { rank: 4, name: 'Shahadat Akash',       points: 207, medal: '4' },
+  { rank: 5, name: 'MD Abu-al Kawsar',     points: 203, medal: '5' },
+];
+
+const RANK_LABEL = ['','Champion','1st Runner-up','2nd Runner-up','Top Performer','Top Performer'];
+
+/* ══════════════════════════════════════════
+   ② RENDER CARDS
+   ══════════════════════════════════════════ */
+const track = document.getElementById('scrollTrack');
+
+// duplicate cards 3× so the scroll loop looks seamless
+[...WINNERS, ...WINNERS, ...WINNERS].forEach(w => {
+  const card = document.createElement('div');
+  card.className = `winner-card rank-${w.rank}`;
+  card.innerHTML = `
+    <div class="rank-badge">
+      <span class="badge-medal">${w.rank <= 3 ? w.medal : w.rank}</span>
+    </div>
+    <div class="winner-info">
+      <div class="winner-name">${w.name}</div>
+      <div class="winner-label">${RANK_LABEL[w.rank]}</div>
+    </div>
+    <div class="points-pill">
+      <div class="points-num">${w.points}</div>
+      <div class="points-label">pts</div>
+    </div>
+  `;
+  track.appendChild(card);
+});
+
+/* ══════════════════════════════════════════
+   ③ SCROLL ANIMATION
+   ══════════════════════════════════════════ */
+let scrollY = 0;
+const SPEED = 0.6; // px per frame — কমাও/বাড়াও
+let lastTime = 0;
+
+function animateScroll(ts) {
+  const dt = Math.min(ts - lastTime, 50);
+  lastTime = ts;
+  scrollY += SPEED * (dt / 16.67);
+
+  const cardH = track.children[0]?.getBoundingClientRect().height ?? 80;
+  const blockH = (cardH + 14) * WINNERS.length;
+  if (scrollY >= blockH) scrollY -= blockH;
+
+  track.style.transform = `translateY(${-scrollY}px)`;
+  requestAnimationFrame(animateScroll);
+}
+requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(animateScroll); });
+
+/* ══════════════════════════════════════════
+   ④ FIREWORKS (canvas A — background)
+   ══════════════════════════════════════════ */
+const fwCanvas = document.getElementById('fireworks-canvas');
+const fwCtx    = fwCanvas.getContext('2d');
+
+function resizeCanvases() {
+  fwCanvas.width  = window.innerWidth;
+  fwCanvas.height = window.innerHeight;
+  cfCanvas.width  = window.innerWidth;
+  cfCanvas.height = window.innerHeight;
+}
+
+const FW_COLORS = ['#FFD700','#FF6B35','#FF1493','#00CFFF','#7FFF00','#FF4500','#FFF'];
+
+class Firework {
+  constructor() { this.reset(); }
+  reset() {
+    this.x  = Math.random() * fwCanvas.width;
+    this.y  = fwCanvas.height;
+    this.tx = 80 + Math.random() * (fwCanvas.width - 160);
+    this.ty = 80 + Math.random() * (fwCanvas.height * .45);
+    const dist = Math.hypot(this.tx - this.x, this.ty - this.y);
+    const speed = 6 + Math.random() * 4;
+    this.vx = (this.tx - this.x) / dist * speed;
+    this.vy = (this.ty - this.y) / dist * speed;
+    this.color = FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)];
+    this.done  = false;
+    this.particles = [];
+  }
+  update() {
+    if (this.done) return;
+    this.x += this.vx; this.y += this.vy;
+    const dist = Math.hypot(this.tx - this.x, this.ty - this.y);
+    if (dist < 8) { this.explode(); this.done = true; }
+  }
+  explode() {
+    const n = 60 + Math.floor(Math.random() * 40);
+    for (let i = 0; i < n; i++) {
+      const angle = (Math.PI * 2 / n) * i;
+      const speed = 1.5 + Math.random() * 3.5;
+      this.particles.push({
+        x: this.x, y: this.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1, decay: .012 + Math.random() * .018,
+        size: 2 + Math.random() * 2,
+        color: this.color,
+      });
+    }
+  }
+  draw() {
+    if (!this.done) {
+      fwCtx.beginPath();
+      fwCtx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+      fwCtx.fillStyle = this.color;
+      fwCtx.shadowBlur = 10; fwCtx.shadowColor = this.color;
+      fwCtx.fill();
+      fwCtx.shadowBlur = 0;
+    }
+    this.particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.vy += .06;          // gravity
+      p.vx *= .97;
+      p.life -= p.decay;
+      fwCtx.globalAlpha = Math.max(0, p.life);
+      fwCtx.beginPath();
+      fwCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      fwCtx.fillStyle = p.color;
+      fwCtx.shadowBlur = 6; fwCtx.shadowColor = p.color;
+      fwCtx.fill();
+      fwCtx.shadowBlur = 0;
+    });
+    fwCtx.globalAlpha = 1;
+    this.particles = this.particles.filter(p => p.life > 0);
+  }
+}
+
+const fireworks = [];
+let fwTimer = 0;
+
+function launchFirework() {
+  if (fireworks.length < 14) fireworks.push(new Firework());
+}
+
+function animateFireworks() {
+  fwCtx.fillStyle = 'rgba(3,14,6,.18)';
+  fwCtx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+
+  fwTimer++;
+  if (fwTimer % 28 === 0) launchFirework();
+
+  fireworks.forEach(fw => { fw.update(); fw.draw(); });
+  fireworks.forEach((fw, i) => {
+    if (fw.done && fw.particles.length === 0) {
+      fireworks[i] = new Firework();
+    }
+  });
+  requestAnimationFrame(animateFireworks);
+}
+
+// start a few immediately
+for (let i = 0; i < 4; i++) setTimeout(launchFirework, i * 400);
+requestAnimationFrame(animateFireworks);
+
+/* ══════════════════════════════════════════
+   ⑤ CONFETTI (canvas B — foreground)
+   ══════════════════════════════════════════ */
+const cfCanvas = document.getElementById('confetti-canvas');
+const cfCtx    = cfCanvas.getContext('2d');
+
+const CF_COLORS = [
+  '#FFD700','#FF4081','#00E5FF','#76FF03',
+  '#FF6D00','#D500F9','#fff','#FF1744',
+];
+
+class Confetti {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x    = Math.random() * cfCanvas.width;
+    this.y    = initial ? Math.random() * cfCanvas.height : -20;
+    this.size = 5 + Math.random() * 8;
+    this.vx   = (Math.random() - .5) * 2;
+    this.vy   = 1.5 + Math.random() * 3;
+    this.rot  = Math.random() * Math.PI * 2;
+    this.rotV = (Math.random() - .5) * .15;
+    this.color= CF_COLORS[Math.floor(Math.random() * CF_COLORS.length)];
+    this.shape= Math.random() < .5 ? 'rect' : 'circle';
+    this.wave = Math.random() * Math.PI * 2;
+    this.waveA= .4 + Math.random() * .6;
+  }
+  update() {
+    this.wave += .04;
+    this.x += this.vx + Math.sin(this.wave) * this.waveA;
+    this.y += this.vy;
+    this.rot += this.rotV;
+    if (this.y > cfCanvas.height + 20) this.reset();
+  }
+  draw() {
+    cfCtx.save();
+    cfCtx.translate(this.x, this.y);
+    cfCtx.rotate(this.rot);
+    cfCtx.fillStyle = this.color;
+    cfCtx.globalAlpha = .85;
+    if (this.shape === 'rect') {
+      cfCtx.fillRect(-this.size / 2, -this.size / 4, this.size, this.size / 2);
+    } else {
+      cfCtx.beginPath();
+      const r = Math.max(0.1, this.size / 2.5); cfCtx.arc(0, 0, r, 0, Math.PI * 2);
+      cfCtx.fill();
+    }
+    cfCtx.restore();
+  }
+}
+
+const confettis = Array.from({ length: 120 }, () => new Confetti());
+
+function animateConfetti() {
+  cfCtx.clearRect(0, 0, cfCanvas.width, cfCanvas.height);
+  confettis.forEach(c => { c.update(); c.draw(); });
+  requestAnimationFrame(animateConfetti);
+}
+requestAnimationFrame(animateConfetti);
+
+/* resize */
+window.addEventListener('resize', resizeCanvases);
+resizeCanvases();
+</script>
+</body>
+</html>
